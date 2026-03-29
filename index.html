@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Science Junction - Turns Your Notes into MCQs</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1a0fa8;
+    --primary-dark: #12097a;
+    --primary-light: #2d1fd4;
+    --accent: #f5c518;
+    --white: #ffffff;
+    --bg: #f0f2ff;
+    --surface: #ffffff;
+    --border: #dde0ff;
+    --text: #1a1a2e;
+    --text-muted: #6b7099;
+    --success: #16a34a;
+    --success-bg: #dcfce7;
+    --danger: #dc2626;
+    --danger-bg: #fee2e2;
+    --radius: 16px;
+    --shadow: 0 4px 20px rgba(26,15,168,0.10);
+    --shadow-lg: 0 8px 32px rgba(26,15,168,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    position: fixed; top: 0; left: 0;
+    width: 230px; height: 100vh;
+    background: var(--primary);
+    display: flex; flex-direction: column;
+    z-index: 100;
+    box-shadow: 4px 0 24px rgba(26,15,168,0.18);
+  }
+
+  .logo-wrap {
+    padding: 28px 24px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 46px; height: 46px;
+    background: white; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .logo-name { font-size: 15px; font-weight: 900; color: white; line-height: 1.2; }
+  .logo-tagline { font-size: 10px; color: rgba(255,255,255,0.6); font-weight: 600; margin-top: 2px; }
+
+  .nav-section { padding: 20px 14px; flex: 1; }
+  .nav-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1.5px; padding: 0 10px; margin-bottom: 8px; }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 12px;
+    cursor: pointer; font-size: 14px; font-weight: 700;
+    color: rgba(255,255,255,0.7);
+    transition: all 0.2s; margin-bottom: 4px;
+    border: none; background: none; width: 100%; text-align: left;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.12); color: white; }
+  .nav-item.active { background: white; color: var(--primary); box-shadow: 0 2px 12px rgba(0,0,0,0.12); }
+  .nav-icon { font-size: 18px; }
+
+  .sidebar-bottom { padding: 16px; border-top: 1px solid rgba(255,255,255,0.12); }
+  .api-status {
+    background: rgba(255,255,255,0.1); border-radius: 10px;
+    padding: 10px 14px; font-size: 12px; color: rgba(255,255,255,0.8);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .api-dot { width: 8px; height: 8px; border-radius: 50%; background: #4ade80; flex-shrink: 0; }
+  .api-dot.off { background: #f87171; }
+
+  .main { margin-left: 230px; padding: 32px; min-height: 100vh; }
+
+  .page { display: none; animation: fadeUp 0.3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; flex-wrap: wrap; gap: 12px; }
+  .page-title { font-size: 26px; font-weight: 900; }
+  .page-subtitle { font-size: 14px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+
+  .card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+  .card-icon { width: 36px; height: 36px; background: var(--bg); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .card-title { font-size: 16px; font-weight: 800; }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 20px 16px;
+    box-shadow: var(--shadow); display: flex; align-items: center; gap: 14px;
+  }
+  .stat-icon { width: 48px; height: 48px; border-radius: 14px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .stat-num { font-size: 26px; font-weight: 900; color: var(--primary); line-height: 1; }
+  .stat-label { font-size: 12px; color: var(--text-muted); font-weight: 700; margin-top: 3px; }
+
+  .btn {
+    padding: 11px 22px; border-radius: 10px; border: none; cursor: pointer;
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 14px;
+    transition: all 0.18s; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 14px rgba(26,15,168,0.25); }
+  .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+  .btn-outline { background: white; color: var(--primary); border: 2px solid var(--primary); }
+  .btn-outline:hover { background: var(--bg); }
+  .btn-sm { padding: 7px 14px; font-size: 13px; }
+  .btn-danger-outline { background: white; color: var(--danger); border: 2px solid var(--danger); }
+
+  textarea, input[type=text], select {
+    width: 100%; background: var(--bg); border: 2px solid var(--border);
+    border-radius: 12px; padding: 12px 16px; color: var(--text);
+    font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 600;
+    outline: none; transition: border 0.2s; resize: vertical;
+  }
+  textarea:focus, input[type=text]:focus, select:focus { border-color: var(--primary); background: white; }
+  label { font-size: 13px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 6px; }
+
+  .upload-box {
+    border: 2.5px dashed var(--border); border-radius: var(--radius);
+    padding: 40px 24px; text-align: center; cursor: pointer;
+    transition: all 0.2s; background: var(--bg);
+  }
+  .upload-box:hover { border-color: var(--primary); background: #eef0ff; }
+  .upload-icon { font-size: 42px; margin-bottom: 10px; }
+  .upload-title { font-size: 15px; font-weight: 800; margin-bottom: 4px; }
+  .upload-sub { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+
+  .api-box { background: #fff8e1; border: 2px solid #f5c518; border-radius: var(--radius); padding: 18px 20px; margin-bottom: 20px; }
+  .api-box-title { font-size: 14px; font-weight: 800; color: #92400e; margin-bottom: 8px; }
+  .api-row { display: flex; gap: 10px; }
+  .api-row input { flex: 1; }
+
+  .question-card {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 28px; margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .question-num {
+    display: inline-flex; align-items: center;
+    background: var(--primary); color: white;
+    border-radius: 8px; padding: 3px 12px;
+    font-size: 12px; font-weight: 800; margin-bottom: 14px;
+  }
+  .question-text { font-size: 17px; font-weight: 800; margin-bottom: 20px; line-height: 1.5; }
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .option {
+    padding: 14px 18px; border-radius: 12px; border: 2px solid var(--border);
+    background: var(--bg); cursor: pointer; font-size: 14px; font-weight: 700;
+    transition: all 0.18s; display: flex; align-items: center; gap: 14px;
+  }
+  .option:hover { border-color: var(--primary); background: #eef0ff; }
+  .option.correct { border-color: var(--success); background: var(--success-bg); color: var(--success); }
+  .option.wrong { border-color: var(--danger); background: var(--danger-bg); color: var(--danger); }
+  .option-letter {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: white; border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 13px; flex-shrink: 0; color: var(--primary);
+  }
+  .option.correct .option-letter { border-color: var(--success); color: var(--success); }
+  .option.wrong .option-letter { border-color: var(--danger); color: var(--danger); }
+
+  .progress-wrap { margin-bottom: 24px; }
+  .progress-info { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--text-muted); margin-bottom: 8px; }
+  .progress-bar { height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width 0.4s ease; }
+
+  .badge { display: inline-flex; align-items: center; padding: 4px 12px; border-radius: 99px; font-size: 12px; font-weight: 800; }
+  .badge-blue { background: #eef0ff; color: var(--primary); }
+  .badge-green { background: var(--success-bg); color: var(--success); }
+  .badge-yellow { background: #fff8e1; color: #92400e; }
+  .badge-red { background: var(--danger-bg); color: var(--danger); }
+
+  .history-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; background: var(--bg); border: 2px solid var(--border);
+    border-radius: 12px; margin-bottom: 8px; transition: border 0.2s;
+  }
+  .history-item:hover { border-color: var(--primary); }
+  .history-title { font-size: 14px; font-weight: 800; }
+  .history-sub { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 2px; }
+
+  .result-wrap { text-align: center; padding: 40px 0; }
+  .result-circle {
+    width: 130px; height: 130px; border-radius: 50%;
+    border: 5px solid var(--primary);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 0 auto 24px; background: #eef0ff;
+    box-shadow: 0 4px 24px rgba(26,15,168,0.15);
+  }
+  .result-pct { font-size: 30px; font-weight: 900; color: var(--primary); }
+  .result-lbl { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+  .result-msg { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
+  .result-detail { color: var(--text-muted); font-size: 14px; font-weight: 600; margin-bottom: 28px; }
+
+  .chart-wrap { display: flex; align-items: flex-end; gap: 10px; height: 140px; margin-top: 14px; }
+  .chart-col { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 6px; }
+  .chart-bar-el { width: 100%; border-radius: 8px 8px 0 0; background: var(--primary); opacity: 0.75; transition: opacity 0.2s; min-height: 6px; }
+  .chart-bar-el:hover { opacity: 1; }
+  .chart-lbl { font-size: 11px; color: var(--text-muted); font-weight: 700; }
+
+  .loading-wrap { text-align: center; padding: 40px; }
+  .spinner { width: 42px; height: 42px; border: 4px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; font-weight: 700; color: var(--text-muted); }
+
+  .features-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 14px; margin-bottom: 20px; }
+  .feature-card {
+    background: var(--surface); border: 2px solid var(--border);
+    border-radius: var(--radius); padding: 18px;
+    box-shadow: var(--shadow); cursor: pointer; transition: all 0.2s;
+  }
+  .feature-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .feature-card-icon { font-size: 28px; margin-bottom: 10px; }
+  .feature-card-title { font-size: 14px; font-weight: 800; margin-bottom: 4px; }
+  .feature-card-sub { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+
+  .row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .spacer { flex: 1; }
+  .mt-16 { margin-top: 16px; }
+  .mt-12 { margin-top: 12px; }
+  .hidden { display: none !important; }
+
+  @media (max-width: 768px) {
+    .sidebar { width: 64px; }
+    .logo-name, .logo-tagline, .nav-item span, .nav-label, .sidebar-bottom { display: none; }
+    .logo-wrap { padding: 16px 10px; }
+    .nav-item { justify-content: center; padding: 13px; }
+    .main { margin-left: 64px; padding: 18px 14px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .features-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo-wrap">
+    <div class="logo">
+      <div class="logo-icon">🧪</div>
+      <div>
+        <div class="logo-name">Science Junction</div>
+        <div class="logo-tagline">TURNS YOUR NOTES INTO MCQs</div>
+      </div>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Main Menu</div>
+    <button class="nav-item active" onclick="showPage('home',this)"><span class="nav-icon">🏠</span><span>Dashboard</span></button>
+    <button class="nav-item" onclick="showPage('generate',this)"><span class="nav-icon">✨</span><span>Generate Quiz</span></button>
+    <button class="nav-item" onclick="showPage('quiz',this)"><span class="nav-icon">📝</span><span>Take Quiz</span></button>
+    <button class="nav-item" onclick="showPage('history',this)"><span class="nav-icon">🕓</span><span>History</span></button>
+    <button class="nav-item" onclick="showPage('performance',this)"><span class="nav-icon">📊</span><span>Performance</span></button>
+    <button class="nav-item" onclick="showPage('settings',this)"><span class="nav-icon">⚙️</span><span>Settings</span></button>
+  </div>
+  <div class="sidebar-bottom">
+    <div class="api-status">
+      <div class="api-dot" id="api-dot"></div>
+      <span id="api-status-text">No API Key</span>
+    </div>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- HOME -->
+  <div id="page-home" class="page active">
+    <div class="topbar">
+      <div><div class="page-title">Welcome! 👋</div><div class="page-subtitle">Ready to turn your notes into knowledge?</div></div>
+      <button class="btn btn-primary" onclick="showPage('generate', document.querySelectorAll('.nav-item')[1])">➕ New Quiz</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">📚</div><div><div class="stat-num" id="stat-quizzes">0</div><div class="stat-label">Quizzes Created</div></div></div>
+      <div class="stat-card"><div class="stat-icon">🎯</div><div><div class="stat-num" id="stat-attempts">0</div><div class="stat-label">Quiz Attempts</div></div></div>
+      <div class="stat-card"><div class="stat-icon">⭐</div><div><div class="stat-num" id="stat-avg">—</div><div class="stat-label">Avg. Score</div></div></div>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card" onclick="showPage('generate', document.querySelectorAll('.nav-item')[1])">
+        <div class="feature-card-icon">📷</div>
+        <div class="feature-card-title">Smart Image Scanning</div>
+        <div class="feature-card-sub">Upload image → AI creates MCQs instantly</div>
+      </div>
+      <div class="feature-card" onclick="showPage('generate', document.querySelectorAll('.nav-item')[1])">
+        <div class="feature-card-icon">🤖</div>
+        <div class="feature-card-title">AI Quiz Generation</div>
+        <div class="feature-card-sub">Paste notes → Get personalized MCQs</div>
+      </div>
+      <div class="feature-card" onclick="showPage('performance', document.querySelectorAll('.nav-item')[4])">
+        <div class="feature-card-icon">📊</div>
+        <div class="feature-card-title">Performance Tracking</div>
+        <div class="feature-card-sub">Detailed analytics & progress insights</div>
+      </div>
+      <div class="feature-card" onclick="showPage('history', document.querySelectorAll('.nav-item')[3])">
+        <div class="feature-card-icon">🕓</div>
+        <div class="feature-card-title">Quiz History</div>
+        <div class="feature-card-sub">Access & review all previous quizzes</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Recent Quizzes</div></div>
+      <div id="home-recent-list"><p style="color:var(--text-muted);font-size:14px;font-weight:600;">No quizzes yet. Generate one above!</p></div>
+    </div>
+  </div>
+
+  <!-- GENERATE -->
+  <div id="page-generate" class="page">
+    <div class="topbar">
+      <div><div class="page-title">Generate Quiz ✨</div><div class="page-subtitle">AI will create topic-based MCQs from your content</div></div>
+    </div>
+
+    <div class="api-box" id="api-warning">
+      <div class="api-box-title">🔑 Gemini AI Key Required for Smart Questions</div>
+      <p style="font-size:13px;color:#78350f;font-weight:600;margin-bottom:10px;">
+        Enter your free Gemini API key to get real topic-based MCQs.
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary);">Free key यहाँ से लें →</a>
+      </p>
+      <div class="api-row">
+        <input type="text" id="api-key-input" placeholder="AIza..." style="font-size:13px;">
+        <button class="btn btn-primary btn-sm" onclick="saveApiKey()">Save Key</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📋</div><div class="card-title">Paste Your Notes</div></div>
+      <label>Your study content (Hindi या English दोनों चलेगा)</label>
+      <textarea id="notes-input" rows="7" placeholder="Paste your chapter notes, textbook content, definitions, formulas here... AI will generate questions based on this exact content!"></textarea>
+      <div class="row mt-16">
+        <div style="flex:1"><label>Number of Questions</label>
+          <select id="q-count"><option value="3">3 Questions</option><option value="5" selected>5 Questions</option><option value="10">10 Questions</option></select>
+        </div>
+        <div style="flex:1"><label>Difficulty</label>
+          <select id="q-diff"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select>
+        </div>
+      </div>
+      <button class="btn btn-primary mt-16" onclick="generateFromText()">⚡ Generate MCQs from Text</button>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📷</div><div class="card-title">Scan Image / Textbook Page</div></div>
+      <div class="upload-box" onclick="document.getElementById('img-input').click()">
+        <div class="upload-icon">📸</div>
+        <div class="upload-title">Click to upload image</div>
+        <div class="upload-sub">JPG, PNG supported • Textbook page, handwritten notes</div>
+        <input type="file" id="img-input" accept="image/*" style="display:none" onchange="handleImageUpload(this)">
+      </div>
+      <div id="img-preview" class="hidden" style="margin-top:14px;">
+        <img id="preview-img" style="max-width:100%;border-radius:12px;max-height:220px;object-fit:contain;border:2px solid var(--border);">
+        <div class="row mt-12">
+          <div style="flex:1"><label>Number of Questions</label>
+            <select id="img-q-count"><option value="3">3 Questions</option><option value="5" selected>5 Questions</option><option value="10">10 Questions</option></select>
+          </div>
+          <button class="btn btn-primary" onclick="generateFromImage()" style="margin-top:20px;">⚡ Generate from Image</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="gen-loading" class="hidden">
+      <div class="loading-wrap"><div class="spinner"></div><div class="loading-text">AI is reading your content and generating questions...</div></div>
+    </div>
+    <div id="gen-result" class="hidden"></div>
+  </div>
+
+  <!-- QUIZ -->
+  <div id="page-quiz" class="page">
+    <div id="quiz-select">
+      <div class="topbar"><div><div class="page-title">Take Quiz 📝</div><div class="page-subtitle">Choose a quiz to start</div></div></div>
+      <div id="quiz-list"><p style="color:var(--text-muted);font-size:14px;font-weight:600;">No quizzes available. Generate one first!</p></div>
+    </div>
+    <div id="quiz-active" class="hidden">
+      <div class="topbar">
+        <div><div class="page-title" id="quiz-active-title">Quiz</div></div>
+        <button class="btn btn-outline btn-sm" onclick="endQuiz()">✕ Exit Quiz</button>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-info"><span id="quiz-progress-text">Question 1 of 5</span><span id="quiz-score-live">Score: 0</span></div>
+        <div class="progress-bar"><div class="progress-fill" id="quiz-progress-bar" style="width:0%"></div></div>
+      </div>
+      <div id="quiz-question-wrap"></div>
+      <div id="quiz-nav" class="row mt-16 hidden">
+        <div id="quiz-feedback" style="font-size:14px;font-weight:700;"></div>
+        <div class="spacer"></div>
+        <button class="btn btn-primary" onclick="nextQuestion()">Next Question →</button>
+      </div>
+    </div>
+    <div id="quiz-result" class="hidden">
+      <div class="result-wrap">
+        <div class="result-circle">
+          <div class="result-pct" id="result-pct">0%</div>
+          <div class="result-lbl">YOUR SCORE</div>
+        </div>
+        <div class="result-msg" id="result-msg"></div>
+        <div class="result-detail" id="result-detail"></div>
+        <div class="row" style="justify-content:center;gap:12px;">
+          <button class="btn btn-outline" onclick="retakeQuiz()">🔁 Retake Quiz</button>
+          <button class="btn btn-primary" onclick="showPage('history', document.querySelectorAll('.nav-item')[3])">📋 View History</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div id="page-history" class="page">
+    <div class="topbar"><div><div class="page-title">Quiz History 🕓</div><div class="page-subtitle">All your previous attempts</div></div></div>
+    <div id="history-list"><p style="color:var(--text-muted);font-size:14px;font-weight:600;">No attempts yet.</p></div>
+  </div>
+
+  <!-- PERFORMANCE -->
+  <div id="page-performance" class="page">
+    <div class="topbar"><div><div class="page-title">Performance 📊</div><div class="page-subtitle">Track your learning progress</div></div></div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">🎯</div><div><div class="stat-num" id="perf-total">0</div><div class="stat-label">Total Attempts</div></div></div>
+      <div class="stat-card"><div class="stat-icon">🏆</div><div><div class="stat-num" id="perf-best">—</div><div class="stat-label">Best Score</div></div></div>
+      <div class="stat-card"><div class="stat-icon">📈</div><div><div class="stat-num" id="perf-avg">—</div><div class="stat-label">Average Score</div></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📈</div><div class="card-title">Score History Chart</div></div>
+      <div id="perf-chart-wrap"><p style="color:var(--text-muted);font-size:14px;font-weight:600;">Complete at least one quiz to see chart.</p></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon">🕓</div><div class="card-title">Recent Attempts</div></div>
+      <div id="perf-recent-list"><p style="color:var(--text-muted);font-size:14px;font-weight:600;">No data yet.</p></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="page-settings" class="page">
+    <div class="topbar"><div><div class="page-title">Settings ⚙️</div><div class="page-subtitle">Configure your AI and preferences</div></div></div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon">🔑</div><div class="card-title">Claude AI API Key</div></div>
+      <p style="font-size:13px;color:var(--text-muted);font-weight:600;margin-bottom:14px;">
+        API key से real topic-based MCQs बनती हैं।
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--primary);font-weight:800;">Free Gemini key यहाँ से लें →</a>
+      </p>
+      <div class="api-row">
+        <input type="text" id="settings-api-key" placeholder="AIza...">
+        <button class="btn btn-primary btn-sm" onclick="saveApiKeySettings()">💾 Save</button>
+      </div>
+      <div id="key-saved-msg" class="hidden" style="margin-top:10px;color:var(--success);font-size:13px;font-weight:700;">✅ API Key saved!</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon">🗑️</div><div class="card-title">Data Management</div></div>
+      <p style="font-size:13px;color:var(--text-muted);font-weight:600;margin-bottom:14px;">सभी quizzes और history delete करें।</p>
+      <button class="btn btn-danger-outline btn-sm" onclick="clearAllData()">🗑️ Clear All Data</button>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* STATE */
+let state = { quizzes: [], history: [] };
+let apiKey = 'AIzaSyCgrN4SGNH0ozBROcK2if7e4mzXRNq7YXM';
+
+try { const s = localStorage.getItem('sj_v2'); if(s) state = JSON.parse(s); const savedKey = localStorage.getItem('sj_key'); if(savedKey) apiKey = savedKey; } catch(e){}
+
+function save() { try { localStorage.setItem('sj_v2', JSON.stringify(state)); } catch(e){} }
+
+/* API STATUS */
+function updateApiStatus() {
+  const dot = document.getElementById('api-dot');
+  const txt = document.getElementById('api-status-text');
+  const warn = document.getElementById('api-warning');
+  if (apiKey) { dot.classList.remove('off'); txt.textContent = 'AI Connected'; if(warn) warn.classList.add('hidden'); }
+  else { dot.classList.add('off'); txt.textContent = 'No API Key'; if(warn) warn.classList.remove('hidden'); }
+}
+
+function saveApiKey() {
+  const k = document.getElementById('api-key-input').value.trim();
+  if(!k) return alert('Please enter your API key!');
+  apiKey = k; localStorage.setItem('sj_key', k); updateApiStatus();
+  alert('✅ API Key saved! Now you can generate real MCQs!');
+}
+
+function saveApiKeySettings() {
+  const k = document.getElementById('settings-api-key').value.trim();
+  if(!k) return alert('Please enter your API key!');
+  apiKey = k; localStorage.setItem('sj_key', k); updateApiStatus();
+  const msg = document.getElementById('key-saved-msg');
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 3000);
+}
+
+function clearAllData() {
+  if(!confirm('Are you sure? This will delete all quizzes and history!')) return;
+  state = { quizzes: [], history: [] }; save(); refreshHome(); alert('✅ All data cleared!');
+}
+
+/* NAVIGATION */
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  if(id==='home') refreshHome();
+  if(id==='quiz') refreshQuizList();
+  if(id==='history') refreshHistory();
+  if(id==='performance') refreshPerformance();
+  if(id==='settings') document.getElementById('settings-api-key').value = apiKey;
+  updateApiStatus();
+}
+
+/* GEMINI API CALL */
+async function callClaude(prompt, imageBase64) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  
+  const parts = [];
+  if(imageBase64) {
+    parts.push({ inline_data: { mime_type: 'image/jpeg', data: imageBase64 } });
+  }
+  parts.push({ text: prompt });
+
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 2000 }
+    })
+  });
+
+  if(!resp.ok) { const e = await resp.json(); throw new Error(e.error?.message || 'Gemini API Error'); }
+  const data = await resp.json();
+  return data.candidates[0].content.parts[0].text;
+}
+
+/* GENERATE FROM TEXT */
+async function generateFromText() {
+  const text = document.getElementById('notes-input').value.trim();
+  if(!text || text.length < 40) return alert('Please paste some study content first!');
+  const count = parseInt(document.getElementById('q-count').value);
+  const diff = document.getElementById('q-diff').value;
+
+  document.getElementById('gen-loading').classList.remove('hidden');
+  document.getElementById('gen-result').classList.add('hidden');
+
+  try {
+    let questions;
+    if(apiKey) {
+      const prompt = `You are an expert MCQ creator. Based on the following study content, create exactly ${count} multiple choice questions at ${diff} difficulty.
+
+Study Content:
+"""
+${text}
+"""
+
+IMPORTANT: Questions must be strictly based on the above content only.
+Return ONLY this JSON format, no extra text:
+{"questions":[{"q":"Question?","options":["A","B","C","D"],"answer":"A"}]}`;
+
+      const response = await callClaude(prompt);
+      const clean = response.replace(/```json|```/g,'').trim();
+      questions = JSON.parse(clean).questions;
+    } else {
+      await new Promise(r => setTimeout(r, 800));
+      questions = fallbackGenerate(text, count);
+    }
+
+    if(!questions?.length) throw new Error('No questions generated. Try adding more content.');
+    const title = text.substring(0,45).trim() + '...';
+    saveQuizData(title, questions);
+    document.getElementById('gen-loading').classList.add('hidden');
+    showPreview(questions, title);
+  } catch(err) {
+    document.getElementById('gen-loading').classList.add('hidden');
+    alert('Error: ' + err.message);
+  }
+}
+
+/* GENERATE FROM IMAGE */
+function handleImageUpload(input) {
+  const file = input.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { document.getElementById('preview-img').src = e.target.result; document.getElementById('img-preview').classList.remove('hidden'); };
+  reader.readAsDataURL(file);
+}
+
+async function generateFromImage() {
+  if(!apiKey) {
+    alert('⚠️ API Key required for image scanning!\nGo to Settings and add your Claude API key.');
+    showPage('settings', document.querySelectorAll('.nav-item')[5]);
+    return;
+  }
+  const count = parseInt(document.getElementById('img-q-count').value);
+  const base64 = document.getElementById('preview-img').src.split(',')[1];
+
+  document.getElementById('gen-loading').classList.remove('hidden');
+  document.getElementById('img-preview').classList.add('hidden');
+
+  try {
+    const prompt = `Look at this image carefully. It contains study material (textbook, notes, or educational content).
+Create exactly ${count} multiple choice questions based ONLY on the content visible in this image.
+Return ONLY this JSON format:
+{"questions":[{"q":"Question?","options":["A","B","C","D"],"answer":"A"}]}`;
+
+    const response = await callClaude(prompt, base64);
+    const clean = response.replace(/```json|```/g,'').trim();
+    const questions = JSON.parse(clean).questions;
+
+    if(!questions?.length) throw new Error('Could not read questions from image.');
+    const title = 'Image Quiz - ' + new Date().toLocaleDateString();
+    saveQuizData(title, questions);
+    document.getElementById('gen-loading').classList.add('hidden');
+    showPreview(questions, title);
+  } catch(err) {
+    document.getElementById('gen-loading').classList.add('hidden');
+    document.getElementById('img-preview').classList.remove('hidden');
+    alert('Error: ' + err.message);
+  }
+}
+
+/* FALLBACK (no API) */
+function fallbackGenerate(text, count) {
+  const sentences = text.replace(/([.!?।])\s+/g,'$1|').split('|').map(s=>s.trim()).filter(s=>s.length>25);
+  const allWords = [...new Set(text.split(/\s+/).map(w=>w.replace(/[^a-zA-Z0-9\u0900-\u097F]/g,'')).filter(w=>w.length>3))];
+  const questions = [];
+  for(let i=0; i<sentences.length && questions.length<count; i++) {
+    const sentence = sentences[i];
+    const words = sentence.split(' ').filter(w=>w.replace(/[^a-zA-Z0-9\u0900-\u097F]/g,'').length>4);
+    if(!words.length) continue;
+    const targetRaw = words[Math.floor(Math.random()*words.length)];
+    const target = targetRaw.replace(/[^a-zA-Z0-9\u0900-\u097F]/g,'');
+    if(!target || target.length<3) continue;
+    const distractors = allWords.filter(w=>w!==target && w.length>3).sort(()=>Math.random()-0.5).slice(0,3);
+    if(distractors.length<3) continue;
+    const options = [target,...distractors].sort(()=>Math.random()-0.5);
+    questions.push({ q: sentence.replace(targetRaw,'______'), options, answer: target });
+  }
+  return questions;
+}
+
+function saveQuizData(title, questions) {
+  state.quizzes.unshift({ id:Date.now(), title, questions, createdAt:new Date().toLocaleString() });
+  save();
+}
+
+function showPreview(questions, title) {
+  const wrap = document.getElementById('gen-result');
+  wrap.classList.remove('hidden');
+  wrap.innerHTML = `
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon">✅</div>
+        <div class="card-title">${title}</div>
+        <div class="spacer"></div>
+        <span class="badge badge-blue">${questions.length} Questions Ready</span>
+      </div>
+      ${questions.map((q,i)=>`
+        <div style="margin-bottom:12px;padding:14px;background:var(--bg);border-radius:12px;border:2px solid var(--border);">
+          <div style="font-size:11px;font-weight:800;color:var(--primary);margin-bottom:5px;">Q${i+1}</div>
+          <div style="font-size:14px;font-weight:700;">${q.q}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:6px;font-weight:600;">${q.options.join(' • ')}</div>
+        </div>
+      `).join('')}
+      <button class="btn btn-primary mt-16" onclick="goTakeLatest()" style="width:100%;justify-content:center;">▶ Start Quiz Now</button>
+    </div>`;
+}
+
+function goTakeLatest() {
+  showPage('quiz', document.querySelectorAll('.nav-item')[2]);
+  if(state.quizzes.length) startQuiz(state.quizzes[0]);
+}
+
+/* QUIZ ENGINE */
+let currentQuiz=null, currentQIdx=0, answers=[], answered=false, liveScore=0;
+
+function refreshQuizList() {
+  const wrap = document.getElementById('quiz-list');
+  if(!state.quizzes.length) { wrap.innerHTML='<p style="color:var(--text-muted);font-size:14px;font-weight:600;">No quizzes yet. Generate one first!</p>'; return; }
+  wrap.innerHTML = state.quizzes.map(q=>`
+    <div class="history-item">
+      <div><div class="history-title">${q.title}</div><div class="history-sub">${q.questions.length} questions • ${q.createdAt}</div></div>
+      <button class="btn btn-primary btn-sm" onclick='startQuiz(${JSON.stringify(q).replace(/'/g,"&#39;")})'>▶ Start</button>
+    </div>`).join('');
+}
+
+function startQuiz(quiz) {
+  currentQuiz=quiz; currentQIdx=0; answers=[]; answered=false; liveScore=0;
+  document.getElementById('quiz-select').classList.add('hidden');
+  document.getElementById('quiz-active').classList.remove('hidden');
+  document.getElementById('quiz-result').classList.add('hidden');
+  document.getElementById('quiz-active-title').textContent = quiz.title;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  answered=false;
+  const q = currentQuiz.questions[currentQIdx];
+  const total = currentQuiz.questions.length;
+  document.getElementById('quiz-progress-text').textContent = `Question ${currentQIdx+1} of ${total}`;
+  document.getElementById('quiz-score-live').textContent = `Score: ${liveScore}`;
+  document.getElementById('quiz-progress-bar').style.width = ((currentQIdx/total)*100)+'%';
+  document.getElementById('quiz-nav').classList.add('hidden');
+  document.getElementById('quiz-question-wrap').innerHTML = `
+    <div class="question-card">
+      <div class="question-num">Question ${currentQIdx+1}</div>
+      <div class="question-text">${q.q}</div>
+      <div class="options">
+        ${q.options.map((opt,i)=>`
+          <div class="option" id="opt-${i}" onclick="selectAnswer(${i},this.dataset.val)" data-val="${opt.replace(/"/g,'&quot;')}">
+            <div class="option-letter">${['A','B','C','D'][i]}</div>
+            <span>${opt}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function selectAnswer(idx, value) {
+  if(answered) return;
+  answered=true;
+  const q = currentQuiz.questions[currentQIdx];
+  const correct = value === q.answer;
+  if(correct) liveScore++;
+  answers.push({ correct, selected:value, answer:q.answer });
+
+  q.options.forEach((opt,i) => {
+    const el = document.getElementById('opt-'+i);
+    if(opt===q.answer) el.classList.add('correct');
+    else if(i===idx && !correct) el.classList.add('wrong');
+  });
+
+  const fb = document.getElementById('quiz-feedback');
+  fb.textContent = correct ? '✅ Correct!' : `❌ Correct answer: ${q.answer}`;
+  fb.style.color = correct ? 'var(--success)' : 'var(--danger)';
+  document.getElementById('quiz-score-live').textContent = `Score: ${liveScore}`;
+  document.getElementById('quiz-nav').classList.remove('hidden');
+}
+
+function nextQuestion() {
+  currentQIdx++;
+  if(currentQIdx >= currentQuiz.questions.length) finishQuiz(); else renderQuestion();
+}
+
+function finishQuiz() {
+  const correct = answers.filter(a=>a.correct).length;
+  const total = currentQuiz.questions.length;
+  const pct = Math.round((correct/total)*100);
+  state.history.unshift({ id:Date.now(), quizId:currentQuiz.id, quizTitle:currentQuiz.title, score:correct, total, pct, date:new Date().toLocaleString() });
+  save();
+  document.getElementById('quiz-active').classList.add('hidden');
+  document.getElementById('quiz-result').classList.remove('hidden');
+  document.getElementById('result-pct').textContent = pct+'%';
+  document.getElementById('result-msg').textContent = pct>=80?'🎉 Excellent Work!':pct>=50?'👍 Good Job!':'📖 Keep Practicing!';
+  document.getElementById('result-detail').textContent = `You got ${correct} out of ${total} questions correct.`;
+  refreshHome();
+}
+
+function retakeQuiz() { startQuiz(currentQuiz); }
+function endQuiz() { document.getElementById('quiz-select').classList.remove('hidden'); document.getElementById('quiz-active').classList.add('hidden'); document.getElementById('quiz-result').classList.add('hidden'); refreshQuizList(); }
+
+/* HISTORY */
+function refreshHistory() {
+  const wrap = document.getElementById('history-list');
+  if(!state.history.length) { wrap.innerHTML='<p style="color:var(--text-muted);font-size:14px;font-weight:600;">No attempts yet.</p>'; return; }
+  wrap.innerHTML = state.history.map(h=>`
+    <div class="history-item">
+      <div><div class="history-title">${h.quizTitle}</div><div class="history-sub">${h.date} • ${h.score}/${h.total} correct</div></div>
+      <span class="badge ${h.pct>=80?'badge-green':h.pct>=50?'badge-yellow':'badge-red'}">${h.pct}%</span>
+    </div>`).join('');
+}
+
+/* PERFORMANCE */
+function refreshPerformance() {
+  const h = state.history;
+  document.getElementById('perf-total').textContent = h.length;
+  if(!h.length) return;
+  const best = Math.max(...h.map(x=>x.pct));
+  const avg = Math.round(h.reduce((s,x)=>s+x.pct,0)/h.length);
+  document.getElementById('perf-best').textContent = best+'%';
+  document.getElementById('perf-avg').textContent = avg+'%';
+  const recent = h.slice(0,8).reverse();
+  document.getElementById('perf-chart-wrap').innerHTML = `
+    <div class="chart-wrap">
+      ${recent.map(x=>`<div class="chart-col"><div class="chart-bar-el" style="height:${x.pct}%" title="${x.pct}%"></div><div class="chart-lbl">${x.pct}%</div></div>`).join('')}
+    </div>`;
+  document.getElementById('perf-recent-list').innerHTML = h.slice(0,5).map(x=>`
+    <div class="history-item">
+      <div class="history-title">${x.quizTitle}</div>
+      <span class="badge ${x.pct>=80?'badge-green':x.pct>=50?'badge-yellow':'badge-red'}">${x.pct}%</span>
+    </div>`).join('');
+}
+
+/* HOME */
+function refreshHome() {
+  document.getElementById('stat-quizzes').textContent = state.quizzes.length;
+  document.getElementById('stat-attempts').textContent = state.history.length;
+  if(state.history.length) document.getElementById('stat-avg').textContent = Math.round(state.history.reduce((s,x)=>s+x.pct,0)/state.history.length)+'%';
+  const rl = document.getElementById('home-recent-list');
+  if(!state.quizzes.length) { rl.innerHTML='<p style="color:var(--text-muted);font-size:14px;font-weight:600;">No quizzes yet. Generate one above!</p>'; return; }
+  rl.innerHTML = state.quizzes.slice(0,4).map(q=>`
+    <div class="history-item">
+      <div><div class="history-title">${q.title}</div><div class="history-sub">${q.questions.length} questions • ${q.createdAt}</div></div>
+      <button class="btn btn-outline btn-sm" onclick='startQuizFromHome(${JSON.stringify(q).replace(/'/g,"&#39;")})'>▶ Start</button>
+    </div>`).join('');
+}
+
+function startQuizFromHome(quiz) { showPage('quiz', document.querySelectorAll('.nav-item')[2]); startQuiz(quiz); }
+
+// Init
+updateApiStatus();
+refreshHome();
+</script>
+</body>
+</html>
