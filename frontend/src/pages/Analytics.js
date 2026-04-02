@@ -46,7 +46,7 @@ function Analytics() {
       return;
     }
     fetchResults();
-  }, [navigate, student]);
+  }, [navigate, student, fetchResults]);
 
   const chapterData = useMemo(() => {
     const grouped = results.reduce((acc, item) => {
