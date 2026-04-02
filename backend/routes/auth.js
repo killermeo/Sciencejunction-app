@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const Student = require('../models/Student');
+const Student = require('../models/student');
 
 // Student Login
 router.post('/login', async (req, res) => {
@@ -78,5 +78,6 @@ router.delete('/student/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
 
 module.exports = router;
