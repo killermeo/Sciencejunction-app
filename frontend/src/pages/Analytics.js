@@ -28,7 +28,7 @@ function Analytics() {
 
     setLoading(true);
     axios
-      .get(`http://localhost:5000/api/results/student/${studentId}`)
+      .get(`/results/student/${studentId}`)
       .then((res) => {
         setResults(Array.isArray(res.data) ? res.data : []);
       })

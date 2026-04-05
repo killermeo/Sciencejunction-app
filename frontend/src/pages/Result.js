@@ -52,7 +52,7 @@ function Result() {
 
     setSaveStatus('saving');
     axios
-      .post('http://localhost:5000/api/results/save', payload)
+      .post('/results/save', payload)
       .then(() => setSaveStatus('saved'))
       .catch(() => setSaveStatus('error'));
   }, [navigate, quizResult, student]);

@@ -11,7 +11,7 @@ function Tests() {
     let isMounted = true;
 
     axios
-      .get('http://localhost:5000/api/tests/active')
+      .get('/tests/active')
       .then((res) => {
         if (isMounted) {
           setTests(Array.isArray(res.data) ? res.data : []);

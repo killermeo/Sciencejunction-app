@@ -10,7 +10,7 @@ function Leaderboard() {
   const fetchLeaderboard = () => {
     setLoading(true);
     axios
-      .get('http://localhost:5000/api/results/all')
+      .get('/results/all')
       .then((res) => {
         setResults(Array.isArray(res.data) ? res.data : []);
       })

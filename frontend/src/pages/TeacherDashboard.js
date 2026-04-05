@@ -40,7 +40,7 @@ function TeacherDashboard() {
   const fetchResults = () => {
     setResultsLoading(true);
     API
-      .get('http://localhost:5000/api/results/all')
+      .get('/results/all')
       .then((res) => setResults(Array.isArray(res.data) ? res.data : []))
       .catch(() => setResults([]))
       .finally(() => setResultsLoading(false));
@@ -49,7 +49,7 @@ function TeacherDashboard() {
   const fetchStudents = () => {
     setStudentsLoading(true);
     API
-      .get('http://localhost:5000/api/auth/students')
+      .get('/auth/students')
       .then((res) => setStudents(Array.isArray(res.data) ? res.data : []))
       .catch(() => setStudents([]))
       .finally(() => setStudentsLoading(false));
@@ -68,7 +68,7 @@ function TeacherDashboard() {
     setGenError('');
 
     API
-      .post('http://localhost:5000/api/questions/generate', {
+      .post('/questions/generate', {
         subject: genForm.subject,
         chapter: genForm.chapter,
         exam: genForm.exam,
@@ -97,7 +97,7 @@ function TeacherDashboard() {
     setPublishMessage('');
 
     API
-      .post('http://localhost:5000/api/tests/publish', {
+      .post('/tests/publish', {
         title: publishForm.title,
         exam: publishForm.exam,
         chapter: genForm.chapter || 'General',
@@ -120,7 +120,7 @@ function TeacherDashboard() {
     setStudentActionLoading(true);
 
     API
-      .post('http://localhost:5000/api/auth/add-student', newStudent)
+      .post('/auth/add-student', newStudent)
       .then(() => {
         setNewStudent({ name: '', father: '', id: '', password: '' });
         fetchStudents();
@@ -133,7 +133,7 @@ function TeacherDashboard() {
     if (!studentId) return;
     setStudentActionLoading(true);
     API
-      .delete(`http://localhost:5000/api/auth/student/${encodeURIComponent(studentId)}`)
+      .delete(`/auth/student/${encodeURIComponent(studentId)}`)
       .then(() => fetchStudents())
       .catch(() => {})
       .finally(() => setStudentActionLoading(false));
