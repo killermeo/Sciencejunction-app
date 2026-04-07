@@ -27,7 +27,7 @@ IMPORTANT RULES:
 5. Questions must match ${examType} difficulty level
 ${isHindi ? '6. सभी questions, options और explanations हिंदी में होने चाहिए' : ''}
 
-Return ONLY a valid JSON array in this exact format (no extra text):
+Return ONLY a valid JSON array. No intro text, no explanation before or after. Start directly with [ and end with ].
 [
   {
     "question": "Question text here",
@@ -62,13 +62,35 @@ correctAnswer is the index (0=A, 1=B, 2=C, 3=D).`;
 
     let content = data.choices[0].message.content.trim();
 
-    // JSON extract करो
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
+    // Step 1: markdown code block हटाओ अगर हो
+    content = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+    // Step 2: JSON array extract करो — पहला [ से आखिरी ] तक
+    const startIndex = content.indexOf('[');
+    const endIndex = content.lastIndexOf(']');
+
+    if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+      console.error('JSON array not found in response:', content.substring(0, 300));
       return res.status(500).json({ error: 'Invalid response format from AI' });
     }
 
-    const questions = JSON.parse(jsonMatch[0]);
+    const jsonString = content.substring(startIndex, endIndex + 1);
+
+    // Step 3: Parse करो
+    let questions;
+    try {
+      questions = JSON.parse(jsonString);
+    } catch (parseErr) {
+      console.error('JSON parse failed:', parseErr.message);
+      console.error('Raw content (first 500 chars):', content.substring(0, 500));
+      return res.status(500).json({ error: 'AI response parse नहीं हो सका। दोबारा try करो।' });
+    }
+
+    // Step 4: Validate — array होना चाहिए
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(500).json({ error: 'Questions generate नहीं हुए। दोबारा try करो।' });
+    }
+
     res.json({ questions, language: language || 'English' });
 
   } catch (error) {
