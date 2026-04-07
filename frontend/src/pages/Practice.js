@@ -1,268 +1,276 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import API from '../services/api';
 
-const CATEGORIES = {
-  'Class 9-12': ['Science', 'Mathematics', 'Commerce', 'Agriculture', 'Arts'],
-  'Competitive Exams': ['JEE / IIT', 'NEET', 'CUET', 'CLAT', 'NDA', 'CA / CMA / CS'],
-};
-
-const layout = {
-  root: {
-    display: 'flex',
-    minHeight: '100vh',
-    fontFamily:
-      "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
-  },
-  sidebar: {
-    width: 240,
-    flexShrink: 0,
-    background: '#0a1628',
-    color: '#e2e8f0',
-    padding: '2rem 1.5rem',
-    boxSizing: 'border-box',
-  },
-  sidebarTitle: {
-    fontSize: '1.125rem',
-    fontWeight: 600,
-    letterSpacing: '0.02em',
-    margin: 0,
-    marginBottom: '0.5rem',
-  },
-  sidebarText: {
-    margin: 0,
-    fontSize: '0.875rem',
-    lineHeight: 1.5,
-    color: '#94a3b8',
-  },
-  main: {
-    flex: 1,
-    padding: '2.5rem clamp(1.5rem, 4vw, 3rem)',
-    background: '#f1f5f9',
-    boxSizing: 'border-box',
-  },
-  card: {
-    maxWidth: 520,
-    background: '#fff',
-    borderRadius: 12,
-    padding: '2rem',
-    boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08), 0 8px 24px rgba(15, 23, 42, 0.06)',
-  },
-  heading: {
-    margin: '0 0 1.75rem',
-    fontSize: '1.5rem',
-    fontWeight: 700,
-    color: '#0f172a',
-  },
-  field: {
-    marginBottom: '1.35rem',
-  },
-  label: {
-    display: 'block',
-    fontSize: '0.8125rem',
-    fontWeight: 600,
-    color: '#334155',
-    marginBottom: '0.45rem',
-  },
-  select: {
-    width: '100%',
-    padding: '0.65rem 0.75rem',
-    fontSize: '0.9375rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: 8,
-    backgroundColor: '#fff',
-    color: '#0f172a',
-    boxSizing: 'border-box',
-  },
-  input: {
-    width: '100%',
-    padding: '0.65rem 0.75rem',
-    fontSize: '0.9375rem',
-    border: '1px solid #cbd5e1',
-    borderRadius: 8,
-    boxSizing: 'border-box',
-  },
-  sliderRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '1rem',
-  },
-  slider: {
-    flex: 1,
-    accentColor: '#ea580c',
-  },
-  countBadge: {
-    minWidth: 40,
-    textAlign: 'center',
-    fontWeight: 600,
-    fontSize: '0.9375rem',
-    color: '#0f172a',
-  },
-  startBtn: {
-    width: '100%',
-    marginTop: '0.5rem',
-    padding: '0.85rem 1.25rem',
-    fontSize: '1rem',
-    fontWeight: 600,
-    color: '#fff',
-    border: 'none',
-    borderRadius: 10,
-    cursor: 'pointer',
-    background: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
-    boxShadow: '0 4px 14px rgba(220, 38, 38, 0.35)',
-  },
-};
-
-function Practice() {
+const Practice = () => {
   const navigate = useNavigate();
-  const [category, setCategory] = useState('Class 9-12');
-  const [subject, setSubject] = useState(() => CATEGORIES['Class 9-12'][0]);
-  const [chapter, setChapter] = useState('');
-  const [questionCount, setQuestionCount] = useState(10);
+  const student = JSON.parse(localStorage.getItem('student') || '{}');
+
+  const [formData, setFormData] = useState({
+    subject: '',
+    chapter: '',
+    examType: 'JEE',
+    questionCount: 10,
+    language: 'English'  // NEW — default English
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const subjectOptions = useMemo(() => CATEGORIES[category] || [], [category]);
+  const examTypes = ['JEE', 'NEET', 'NDA', 'UPSC', 'CUET', 'Class 9-10', 'Class 11-12'];
 
-  const handleCategoryChange = (e) => {
-    const next = e.target.value;
-    setCategory(next);
-    const first = CATEGORIES[next]?.[0] || '';
-    setSubject(first);
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleStart = () => {
-    const topic = (chapter || '').trim() || 'General';
-    const difficulty = '70% hard, 20% medium, 10% tricky';
+  // Language toggle handler
+  const handleLanguage = (lang) => {
+    setFormData({ ...formData, language: lang });
+  };
 
-    setLoading(true);
+  const handleSubmit = async () => {
+    if (!formData.subject || !formData.chapter) {
+      setError('Subject और Chapter भरना जरूरी है');
+      return;
+    }
     setError('');
+    setLoading(true);
 
-    API.post('/questions/generate', {
-      exam: subject,
-      chapter: topic,
-      count: questionCount,
-      lang: 'English',
-      difficulty,
-    })
-      .then((res) => {
-        const qs = Array.isArray(res.data?.questions) ? res.data.questions : [];
-        if (!qs.length) {
-          setError('No questions were generated. Please try again.');
-          return;
-        }
+    try {
+      const response = await API.post('/questions/generate', formData);
+      const { questions, language } = response.data;
 
-        localStorage.setItem(
-          'selectedTest',
-          JSON.stringify({
-            title: 'Practice Test',
-            exam: subject,
-            chapter: topic,
-            timeLimit: 30,
-            questions: qs,
-          }),
-        );
+      // Quiz data save करो
+      localStorage.setItem('quizQuestions', JSON.stringify(questions));
+      localStorage.setItem('quizConfig', JSON.stringify({
+        subject: formData.subject,
+        chapter: formData.chapter,
+        examType: formData.examType,
+        language: language,
+        studentId: student._id,
+        studentName: student.name
+      }));
 
-        navigate('/quiz');
-      })
-      .catch((err) => {
-        const msg = err?.response?.data?.error || 'Could not generate questions. Please try again.';
-        console.error('Practice generation failed:', err);
-        setError(msg);
-      })
-      .finally(() => setLoading(false));
+      navigate('/quiz');
+    } catch (err) {
+      setError('Questions generate नहीं हुए। दोबारा try करो।');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div style={layout.root}>
-      <aside style={layout.sidebar} aria-label="Practice navigation">
-        <h2 style={layout.sidebarTitle}>Practice</h2>
-        <p style={layout.sidebarText}>
-          Configure your session, then start when you are ready.
-        </p>
-      </aside>
+    <div style={{ padding: '30px', maxWidth: '600px', margin: '0 auto' }}>
 
-      <main style={layout.main}>
-        <div style={layout.card}>
-          <h1 style={layout.heading}>Start practice</h1>
+      {/* Header */}
+      <div style={{
+        background: 'linear-gradient(135deg, #F59E0B, #EF4444)',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '28px',
+        color: 'white',
+        textAlign: 'center'
+      }}>
+        <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>🤖 AI Practice Quiz</h1>
+        <p style={{ margin: '8px 0 0', opacity: 0.9 }}>अपनी पसंद का topic चुनो और quiz शुरू करो</p>
+      </div>
 
-          <div style={layout.field}>
-            <label htmlFor="practice-category" style={layout.label}>
-              Category
-            </label>
-            <select
-              id="practice-category"
-              style={layout.select}
-              value={category}
-              onChange={handleCategoryChange}
-            >
-              <option value="Class 9-12">Class 9-12</option>
-              <option value="Competitive Exams">Competitive Exams</option>
-            </select>
-          </div>
+      {/* Form Card */}
+      <div style={{
+        background: 'white',
+        borderRadius: '16px',
+        padding: '28px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.08)'
+      }}>
 
-          <div style={layout.field}>
-            <label htmlFor="practice-subject" style={layout.label}>
-              Subject
-            </label>
-            <select
-              id="practice-subject"
-              style={layout.select}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-            >
-              {subjectOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div style={layout.field}>
-            <label htmlFor="practice-chapter" style={layout.label}>
-              Chapter
-            </label>
-            <input
-              id="practice-chapter"
-              type="text"
-              style={layout.input}
-              placeholder="e.g. Motion, Thermodynamics"
-              value={chapter}
-              onChange={(e) => setChapter(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-
-          <div style={layout.field}>
-            <label htmlFor="practice-count" style={layout.label}>
-              Number of questions
-            </label>
-            <div style={layout.sliderRow}>
-              <input
-                id="practice-count"
-                type="range"
-                style={layout.slider}
-                min={5}
-                max={50}
-                step={5}
-                value={questionCount}
-                onChange={(e) => setQuestionCount(Number(e.target.value))}
-              />
-              <span style={layout.countBadge} aria-live="polite">
-                {questionCount}
-              </span>
-            </div>
-          </div>
-
-          <button type="button" style={layout.startBtn} onClick={handleStart} disabled={loading}>
-            {loading ? 'Generating...' : 'Start'}
-          </button>
-          {error && <p style={{ margin: '12px 0 0', color: '#B91C1C' }}>{error}</p>}
+        {/* Subject */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>📚 Subject</label>
+          <input
+            type="text"
+            name="subject"
+            placeholder="जैसे: Physics, Chemistry, History..."
+            value={formData.subject}
+            onChange={handleChange}
+            style={inputStyle}
+          />
         </div>
-      </main>
+
+        {/* Chapter */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>📖 Chapter / Topic</label>
+          <input
+            type="text"
+            name="chapter"
+            placeholder="जैसे: Newton's Laws, Modern History..."
+            value={formData.chapter}
+            onChange={handleChange}
+            style={inputStyle}
+          />
+        </div>
+
+        {/* Exam Type */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>🎯 Exam Type</label>
+          <select
+            name="examType"
+            value={formData.examType}
+            onChange={handleChange}
+            style={inputStyle}
+          >
+            {examTypes.map(exam => (
+              <option key={exam} value={exam}>{exam}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Question Count */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={labelStyle}>🔢 Questions की संख्या</label>
+          <select
+            name="questionCount"
+            value={formData.questionCount}
+            onChange={handleChange}
+            style={inputStyle}
+          >
+            {[5, 10, 15, 20, 25, 30].map(n => (
+              <option key={n} value={n}>{n} Questions</option>
+            ))}
+          </select>
+        </div>
+
+        {/* ===== LANGUAGE TOGGLE — NEW ===== */}
+        <div style={{ marginBottom: '28px' }}>
+          <label style={labelStyle}>🌐 Question Language</label>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+
+            {/* English Button */}
+            <button
+              onClick={() => handleLanguage('English')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '10px',
+                border: formData.language === 'English'
+                  ? '2px solid #F59E0B'
+                  : '2px solid #E5E7EB',
+                background: formData.language === 'English'
+                  ? 'linear-gradient(135deg, #FEF3C7, #FDE68A)'
+                  : '#F9FAFB',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '15px',
+                color: formData.language === 'English' ? '#92400E' : '#6B7280',
+                transition: 'all 0.2s'
+              }}
+            >
+              🇬🇧 English
+            </button>
+
+            {/* Hindi Button */}
+            <button
+              onClick={() => handleLanguage('Hindi')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '10px',
+                border: formData.language === 'Hindi'
+                  ? '2px solid #EF4444'
+                  : '2px solid #E5E7EB',
+                background: formData.language === 'Hindi'
+                  ? 'linear-gradient(135deg, #FEE2E2, #FECACA)'
+                  : '#F9FAFB',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                fontSize: '15px',
+                color: formData.language === 'Hindi' ? '#991B1B' : '#6B7280',
+                transition: 'all 0.2s'
+              }}
+            >
+              🇮🇳 हिंदी
+            </button>
+
+          </div>
+          {/* Language info message */}
+          <p style={{
+            marginTop: '8px',
+            fontSize: '12px',
+            color: '#9CA3AF',
+            textAlign: 'center'
+          }}>
+            {formData.language === 'Hindi'
+              ? '✅ Questions हिंदी में आएंगे'
+              : '✅ Questions English में आएंगे'}
+          </p>
+        </div>
+        {/* ===== LANGUAGE TOGGLE END ===== */}
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            background: '#FEE2E2',
+            color: '#DC2626',
+            padding: '12px',
+            borderRadius: '8px',
+            marginBottom: '16px',
+            fontSize: '14px'
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          style={{
+            width: '100%',
+            padding: '16px',
+            background: loading
+              ? '#D1D5DB'
+              : 'linear-gradient(135deg, #F59E0B, #EF4444)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '12px',
+            fontSize: '18px',
+            fontWeight: 'bold',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s'
+          }}
+        >
+          {loading ? '⏳ Questions Generate हो रहे हैं...' : '🚀 Quiz शुरू करो'}
+        </button>
+
+        {loading && (
+          <p style={{ textAlign: 'center', color: '#6B7280', marginTop: '12px', fontSize: '13px' }}>
+            AI questions बना रहा है — 10-20 seconds लगेंगे...
+          </p>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+// Styles
+const labelStyle = {
+  display: 'block',
+  marginBottom: '8px',
+  fontWeight: '600',
+  color: '#374151',
+  fontSize: '14px'
+};
+
+const inputStyle = {
+  width: '100%',
+  padding: '12px 14px',
+  border: '2px solid #E5E7EB',
+  borderRadius: '10px',
+  fontSize: '15px',
+  outline: 'none',
+  boxSizing: 'border-box',
+  fontFamily: 'Hind, sans-serif',
+  color: '#1F2937',
+  background: '#FAFAFA'
+};
 
 export default Practice;
