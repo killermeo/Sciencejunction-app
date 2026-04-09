@@ -6,7 +6,6 @@ const MAX_TAB_WARNINGS = 3;
 
 const getMarkingRules = (examName = '') => {
   const exam = examName.toUpperCase();
-
   if (exam.includes('JEE') || exam.includes('NEET')) {
     return { positive: 4, negative: 1, label: '+4 / -1' };
   }
@@ -19,7 +18,6 @@ const getMarkingRules = (examName = '') => {
   if (exam.includes('CUET')) {
     return { positive: 1, negative: 0.2, label: '+1 / -0.2' };
   }
-
   return { positive: 1, negative: 0, label: '+1 / No negative' };
 };
 
@@ -44,6 +42,32 @@ function Quiz() {
     const loadTest = async () => {
       setLoadingTest(true);
       try {
+        // STEP 1: Pehle quizQuestions check karo (AI Practice flow)
+        const rawQ = localStorage.getItem('quizQuestions');
+        const rawC = localStorage.getItem('quizConfig');
+        if (rawQ && rawC) {
+          const qs = JSON.parse(rawQ);
+          const cfg = JSON.parse(rawC);
+          const formatted = qs.map(q => ({
+            q: q.question,
+            opts: q.options,
+            ans: q.correctAnswer
+          }));
+          const testObj = {
+            _id: 'practice',
+            title: cfg.subject + ' - ' + cfg.chapter,
+            exam: cfg.examType,
+            timeLimit: 30,
+            questions: formatted
+          };
+          localStorage.removeItem('quizQuestions');
+          localStorage.removeItem('quizConfig');
+          localStorage.setItem('selectedTest', JSON.stringify(testObj));
+          if (isMounted) setSelectedTest(testObj);
+          return;
+        }
+
+        // STEP 2: selectedTest localStorage check karo
         let fromStorage = null;
         try {
           const raw = localStorage.getItem('selectedTest');
@@ -57,6 +81,7 @@ function Quiz() {
           return;
         }
 
+        // STEP 3: API se load karo (Daily Test flow)
         if (testId) {
           const res = await API.get('/tests/active');
           const tests = Array.isArray(res.data) ? res.data : [];
@@ -73,22 +98,16 @@ function Quiz() {
           return;
         }
 
-        if (isMounted) {
-          setSelectedTest(null);
-        }
+        if (isMounted) setSelectedTest(null);
       } catch {
-        if (isMounted) {
-          setSelectedTest(null);
-        }
+        if (isMounted) setSelectedTest(null);
       } finally {
         if (isMounted) setLoadingTest(false);
       }
     };
 
     loadTest();
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [testId]);
 
   const questions = useMemo(() => selectedTest?.questions || [], [selectedTest]);
@@ -99,32 +118,17 @@ function Quiz() {
   const [timeLeft, setTimeLeft] = useState(() => (selectedTest?.timeLimit || 30) * 60);
   const [tabWarnings, setTabWarnings] = useState(0);
 
-  // Refs keep `submitQuiz` stable without resubscribing timer/listeners on every answer change.
   const selectedTestRef = useRef(selectedTest);
   const questionsRef = useRef(questions);
   const answersRef = useRef(answers);
   const rulesRef = useRef(rules);
   const tabWarningsRef = useRef(tabWarnings);
 
-  useEffect(() => {
-    selectedTestRef.current = selectedTest;
-  }, [selectedTest]);
-
-  useEffect(() => {
-    questionsRef.current = questions;
-  }, [questions]);
-
-  useEffect(() => {
-    answersRef.current = answers;
-  }, [answers]);
-
-  useEffect(() => {
-    rulesRef.current = rules;
-  }, [rules]);
-
-  useEffect(() => {
-    tabWarningsRef.current = tabWarnings;
-  }, [tabWarnings]);
+  useEffect(() => { selectedTestRef.current = selectedTest; }, [selectedTest]);
+  useEffect(() => { questionsRef.current = questions; }, [questions]);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { rulesRef.current = rules; }, [rules]);
+  useEffect(() => { tabWarningsRef.current = tabWarnings; }, [tabWarnings]);
 
   useEffect(() => {
     setCurrentIndex(0);
@@ -136,62 +140,58 @@ function Quiz() {
     submittedRef.current = false;
   }, [questions.length, selectedTest?.timeLimit]);
 
-  const submitQuiz = useCallback(
-    (reason = 'manual') => {
-      const sel = selectedTestRef.current;
-      if (submittedRef.current || !sel) return;
-      submittedRef.current = true;
+  const submitQuiz = useCallback((reason = 'manual') => {
+    const sel = selectedTestRef.current;
+    if (submittedRef.current || !sel) return;
+    submittedRef.current = true;
 
-      const qs = questionsRef.current;
-      const currentAnswers = answersRef.current;
-      const currentRules = rulesRef.current;
-      const currentWarnings = tabWarningsRef.current;
+    const qs = questionsRef.current;
+    const currentAnswers = answersRef.current;
+    const currentRules = rulesRef.current;
+    const currentWarnings = tabWarningsRef.current;
 
-      let correct = 0;
-      let wrong = 0;
-      let unanswered = 0;
+    let correct = 0;
+    let wrong = 0;
+    let unanswered = 0;
 
-      qs.forEach((question, idx) => {
-        const userAnswer = currentAnswers[idx];
-        if (userAnswer === null || userAnswer === undefined) {
-          unanswered += 1;
-          return;
-        }
+    qs.forEach((question, idx) => {
+      const userAnswer = currentAnswers[idx];
+      if (userAnswer === null || userAnswer === undefined) {
+        unanswered += 1;
+        return;
+      }
+      if (userAnswer === question.ans) {
+        correct += 1;
+      } else {
+        wrong += 1;
+      }
+    });
 
-        if (userAnswer === question.ans) {
-          correct += 1;
-        } else {
-          wrong += 1;
-        }
-      });
+    const attempted = correct + wrong;
+    const score = correct * currentRules.positive - wrong * currentRules.negative;
+    const maxScore = qs.length * currentRules.positive;
 
-      const attempted = correct + wrong;
-      const score = correct * currentRules.positive - wrong * currentRules.negative;
-      const maxScore = qs.length * currentRules.positive;
+    const quizResult = {
+      testId: sel._id || null,
+      title: sel.title || 'Untitled Test',
+      exam: sel.exam || 'Unknown Exam',
+      submittedBy: reason,
+      totalQuestions: qs.length,
+      attempted,
+      correct,
+      wrong,
+      unanswered,
+      score: Number(score.toFixed(3)),
+      maxScore: Number(maxScore.toFixed(3)),
+      marking: currentRules,
+      warningsUsed: currentWarnings,
+      submittedAt: new Date().toISOString(),
+      answers: currentAnswers,
+    };
 
-      const quizResult = {
-        testId: sel._id || null,
-        title: sel.title || 'Untitled Test',
-        exam: sel.exam || 'Unknown Exam',
-        submittedBy: reason,
-        totalQuestions: qs.length,
-        attempted,
-        correct,
-        wrong,
-        unanswered,
-        score: Number(score.toFixed(3)),
-        maxScore: Number(maxScore.toFixed(3)),
-        marking: currentRules,
-        warningsUsed: currentWarnings,
-        submittedAt: new Date().toISOString(),
-        answers: currentAnswers,
-      };
-
-      localStorage.setItem('quizResult', JSON.stringify(quizResult));
-      navigate('/result');
-    },
-    [navigate],
-  );
+    localStorage.setItem('quizResult', JSON.stringify(quizResult));
+    navigate('/result');
+  }, [navigate]);
 
   useEffect(() => {
     if (!loadingTest && (!selectedTest || questions.length === 0)) {
@@ -201,7 +201,6 @@ function Quiz() {
 
   useEffect(() => {
     if (!selectedTest) return undefined;
-
     const timerId = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -212,7 +211,6 @@ function Quiz() {
         return prev - 1;
       });
     }, 1000);
-
     return () => clearInterval(timerId);
   }, [selectedTest, submitQuiz]);
 
@@ -228,7 +226,6 @@ function Quiz() {
         });
       }
     };
-
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [submitQuiz]);
@@ -250,83 +247,45 @@ function Quiz() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#F4F7FF' }}>
-      <div
-        style={{
-          width: '220px',
-          background: 'linear-gradient(180deg, #0F1C3F, #162447)',
-          color: 'white',
-          padding: '24px 16px',
-        }}
-      >
-        <h2
-          style={{
-            fontSize: '18px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            marginTop: 0,
-          }}
-        >
-          <span
-            style={{
-              backgroundImage: 'linear-gradient(to right, #F59E0B, #EF4444)',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              color: 'transparent',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 800,
-              lineHeight: 1,
-            }}
-          >
-            ⚗
-          </span>
+      <div style={{
+        width: '220px',
+        background: 'linear-gradient(180deg, #0F1C3F, #162447)',
+        color: 'white',
+        padding: '24px 16px',
+      }}>
+        <h2 style={{ fontSize: '18px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', marginTop: 0 }}>
+          <span style={{
+            backgroundImage: 'linear-gradient(to right, #F59E0B, #EF4444)',
+            WebkitBackgroundClip: 'text',
+            backgroundClip: 'text',
+            color: 'transparent',
+            WebkitTextFillColor: 'transparent',
+            fontWeight: 800,
+            lineHeight: 1,
+          }}>⚗</span>
           <span>Science Junction</span>
         </h2>
-        <p style={{ margin: '0 0 10px', fontSize: '14px', opacity: 0.9 }}>
-          {selectedTest.title || 'Quiz'}
-        </p>
-        <p style={{ margin: '0 0 18px', fontSize: '13px', opacity: 0.85 }}>
-          Marking: {rules.label}
-        </p>
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.14)',
-            borderRadius: '10px',
-            padding: '10px 12px',
-            marginBottom: '12px',
-          }}
-        >
+        <p style={{ margin: '0 0 10px', fontSize: '14px', opacity: 0.9 }}>{selectedTest.title || 'Quiz'}</p>
+        <p style={{ margin: '0 0 18px', fontSize: '13px', opacity: 0.85 }}>Marking: {rules.label}</p>
+        <div style={{ background: 'rgba(255,255,255,0.14)', borderRadius: '10px', padding: '10px 12px', marginBottom: '12px' }}>
           <div style={{ fontSize: '12px', opacity: 0.85 }}>Time Left</div>
           <div style={{ fontSize: '20px', fontWeight: 700 }}>{formatTime(timeLeft)}</div>
         </div>
-        <div
-          style={{
-            background: 'rgba(255,255,255,0.14)',
-            borderRadius: '10px',
-            padding: '10px 12px',
-          }}
-        >
+        <div style={{ background: 'rgba(255,255,255,0.14)', borderRadius: '10px', padding: '10px 12px' }}>
           <div style={{ fontSize: '12px', opacity: 0.85 }}>Tab Warnings</div>
-          <div style={{ fontSize: '20px', fontWeight: 700 }}>
-            {tabWarnings}/{MAX_TAB_WARNINGS}
-          </div>
+          <div style={{ fontSize: '20px', fontWeight: 700 }}>{tabWarnings}/{MAX_TAB_WARNINGS}</div>
         </div>
       </div>
 
       <div style={{ flex: 1, padding: '32px' }}>
-        <div
-          style={{
-            background: 'white',
-            borderRadius: '12px',
-            boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-            padding: '24px',
-            maxWidth: '820px',
-          }}
-        >
-          <p style={{ color: '#64748B', margin: 0 }}>
-            Question {currentIndex + 1} of {questions.length}
-          </p>
+        <div style={{
+          background: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+          padding: '24px',
+          maxWidth: '820px',
+        }}>
+          <p style={{ color: '#64748B', margin: 0 }}>Question {currentIndex + 1} of {questions.length}</p>
           <h2 style={{ color: '#0F1C3F', marginTop: '8px' }}>{currentQuestion?.q}</h2>
 
           <div style={{ marginTop: '16px' }}>
@@ -347,8 +306,7 @@ function Quiz() {
                   textAlign: 'left',
                   padding: '12px 14px',
                   borderRadius: '10px',
-                  border:
-                    selectedOption === optionIdx ? '2px solid #0F1C3F' : '1px solid #D9E1F2',
+                  border: selectedOption === optionIdx ? '2px solid #0F1C3F' : '1px solid #D9E1F2',
                   marginBottom: '10px',
                   background: selectedOption === optionIdx ? '#EEF2FF' : '#FFFFFF',
                   color: '#1E293B',
@@ -380,9 +338,7 @@ function Quiz() {
             {currentIndex < questions.length - 1 ? (
               <button
                 type="button"
-                onClick={() =>
-                  setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1))
-                }
+                onClick={() => setCurrentIndex((prev) => Math.min(prev + 1, questions.length - 1))}
                 style={{
                   padding: '10px 18px',
                   borderRadius: '8px',
