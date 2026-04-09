@@ -24,6 +24,8 @@ temperature: 0.7
 })
 });
 const data = await response.json();
+console.log('Groq status:', response.status);
+console.log('Groq data:', JSON.stringify(data));
 
 if (!data.choices || !data.choices[0]) {
   return res.status(500).json({ error: 'Groq API error', details: data });
