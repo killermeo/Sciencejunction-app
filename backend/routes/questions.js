@@ -8,7 +8,9 @@ const languageInstruction = isHindi
 : 'Generate all questions, options, and explanations in English language.';
 const prompt = 'You are an expert CBSE exam question generator.\n\n' + languageInstruction + '\n\nGenerate exactly ' + questionCount + ' multiple choice questions for:\n- Class: ' + (classLevel || '') + '\n- Stream: ' + (stream || 'N/A') + '\n- Subject: ' + subject + '\n- Chapter/Topic: ' + chapter + '\n- Exam Pattern: ' + examType + '\n\nIMPORTANT RULES:\n1. Each question must have exactly 4 options (A, B, C, D)\n2. Add a brief explanation for each answer\n3. Questions must match ' + examType + ' difficulty level\n' + (isHindi ? '4. सभी questions, options और explanations हिंदी में होने चाहिए' : '') + '\n\nReturn ONLY a valid JSON array. Start with [ and end with ].\n[\n  {\n    "question": "Question text here",\n    "options": ["Option A", "Option B", "Option C", "Option D"],\n    "correctAnswer": 0,\n    "explanation": "Brief explanation here"\n  }\n]';
 try {
-const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+console.log('API KEY exists:', !!process.env.GROQ_API_KEY);
+  console.log('Request body:', JSON.stringify(req.body));
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
 method: 'POST',
 headers: {
 'Authorization': 'Bearer ' + process.env.GROQ_API_KEY,
