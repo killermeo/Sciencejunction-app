@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const fetch = require('node-fetch');
 router.post('/generate', async (req, res) => {
 const { subject, chapter, examType, questionCount, language, classLevel, stream } = req.body;
 const isHindi = language === 'Hindi';
